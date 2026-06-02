@@ -91,6 +91,7 @@ export async function validateProject(): Promise<PreflightContext> {
 
   // Check for gateways in agentcore.json
   const hasGateways = projectSpec.agentCoreGateways && projectSpec.agentCoreGateways.length > 0;
+  const hasPayments = projectSpec.payments && projectSpec.payments.length > 0;
 
   if (
     !hasAgents &&
@@ -99,7 +100,8 @@ export async function validateProject(): Promise<PreflightContext> {
     !hasEvaluators &&
     !hasPolicyEngines &&
     !hasHarnesses &&
-    !hasDatasets
+    !hasDatasets &&
+    !hasPayments
   ) {
     let hasExistingStack = false;
     try {
@@ -241,6 +243,8 @@ export interface SynthOptions {
   ioHost?: IIoHost;
   /** Previous toolkit wrapper to dispose before synthesis. */
   previousWrapper?: CdkToolkitWrapper | null;
+  /** Target region for CDK operations. Without this, toolkit may default to us-east-1. */
+  region?: string;
 }
 
 /**
@@ -261,6 +265,7 @@ export async function synthesizeCdk(cdkProject: LocalCdkProject, options?: Synth
   const toolkitWrapper = await createCdkToolkitWrapper({
     projectDir: cdkProject.projectDir,
     ioHost: options?.ioHost ?? silentIoHost,
+    region: options?.region,
   });
 
   // synth() produces the assembly internally and stores the directory for later use

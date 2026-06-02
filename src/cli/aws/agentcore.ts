@@ -70,6 +70,10 @@ export interface InvokeAgentRuntimeOptions {
   baggage?: string;
   /** Runtime endpoint qualifier (e.g. DEFAULT, PROMPT_V1). Defaults to DEFAULT. */
   endpoint?: string;
+  /** Payment instrument ID for x402 payments */
+  paymentInstrumentId?: string;
+  /** Payment session ID for budget tracking */
+  paymentSessionId?: string;
 }
 
 export interface InvokeAgentRuntimeResult {
@@ -149,6 +153,21 @@ export function extractResult(text: string): string {
   }
 }
 
+/**
+ * Build the JSON payload body for an invoke request.
+ * Includes payment context fields only when provided.
+ */
+function buildInvokePayload(options: InvokeAgentRuntimeOptions): string {
+  const body: Record<string, string> = { prompt: options.payload };
+  if (options.paymentInstrumentId) {
+    body.payment_instrument_id = options.paymentInstrumentId;
+  }
+  if (options.paymentSessionId) {
+    body.payment_session_id = options.paymentSessionId;
+  }
+  return JSON.stringify(body);
+}
+
 // ---------------------------------------------------------------------------
 // Bearer token (CUSTOM_JWT) thin HTTP client
 // ---------------------------------------------------------------------------
@@ -201,7 +220,7 @@ async function invokeWithBearerTokenStreaming(options: InvokeAgentRuntimeOptions
   const res = await fetch(url, {
     method: 'POST',
     headers,
-    body: JSON.stringify({ prompt: options.payload }),
+    body: buildInvokePayload(options),
   });
 
   if (!res.ok) {
@@ -287,7 +306,7 @@ async function invokeWithBearerToken(options: InvokeAgentRuntimeOptions): Promis
   const res = await fetch(url, {
     method: 'POST',
     headers,
-    body: JSON.stringify({ prompt: options.payload }),
+    body: buildInvokePayload(options),
   });
 
   if (!res.ok) {
@@ -319,7 +338,7 @@ export async function invokeAgentRuntimeStreaming(options: InvokeAgentRuntimeOpt
 
   const command = new InvokeAgentRuntimeCommand({
     agentRuntimeArn: options.runtimeArn,
-    payload: new TextEncoder().encode(JSON.stringify({ prompt: options.payload })),
+    payload: new TextEncoder().encode(buildInvokePayload(options)),
     contentType: 'application/json',
     accept: 'application/json, text/event-stream',
     runtimeSessionId: options.sessionId,
@@ -415,7 +434,7 @@ export async function invokeAgentRuntime(options: InvokeAgentRuntimeOptions): Pr
 
   const command = new InvokeAgentRuntimeCommand({
     agentRuntimeArn: options.runtimeArn,
-    payload: new TextEncoder().encode(JSON.stringify({ prompt: options.payload })),
+    payload: new TextEncoder().encode(buildInvokePayload(options)),
     contentType: 'application/json',
     accept: 'application/json, text/event-stream',
     runtimeSessionId: options.sessionId,
